@@ -62,6 +62,7 @@ class Server {
                 "http://localhost:8080",
                 "http://localhost:8030",
                 "https://zmilesprovone.dev-jskarma.net",
+                "https://web-myzmiles.onrender.com",
                 "*"
             ];
 
