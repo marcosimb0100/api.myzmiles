@@ -19,16 +19,7 @@ class Server {
                 // serveClient: false
                 cors: {
                     origin: [
-                        "capacitor://localhost",
-                        "ionic://localhost",
-                        "http://localhost",
-                        "http://localhost:8200",
-                        "http://127.0.0.1:8200",
-                        "http://localhost:8100",
-                        "http://127.0.0.1:8100",
                         "http://localhost:8080",
-                        "http://localhost:8030",
-                        "https://zmilesprovone.dev-jskarma.net",
                         "https://web-myzmiles.onrender.com"
                     ],
                     credentials: true,
@@ -49,21 +40,8 @@ class Server {
         this.app.use((req, res, next) => {
 
             const origenes = [
-                "capacitor://localhost",
-                "ionic://localhost",
-                "https://cdemos.ddns.net",
-                "http://localhost",
-                "http://localhost:8200",
-                "http://127.0.0.1:8200",
-                "http://localhost:8100",
-                "http://127.0.0.1:8100",
-                "http://localhost:8081",
-                "http://127.0.0.1:8081",
                 "http://localhost:8080",
-                "http://localhost:8030",
-                "https://zmilesprovone.dev-jskarma.net",
-                "https://web-myzmiles.onrender.com",
-                "*"
+                "https://web-myzmiles.onrender.com"
             ];
 
             // console.log(req.headers.origin);
