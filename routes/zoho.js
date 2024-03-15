@@ -6,7 +6,8 @@ const axios = require('axios');
 const { zoho_refresh_token_crm, zoho_refresh_token_wd } = require('../helpers/zoho-token');
 const { fn_generateJWT, fn_validateJWTProv, fn_validateJWTProvO, fn_validateJWTProv1 } = require('../helpers/app-token');
 const routerZoho = Router();
-const fileDownload = require('js-file-download');
+// const fileDownload = require('js-file-download');
+const { v4: uuidv4 } = require('uuid');
 
 const urls = [{
     name: 'crm_contact',
@@ -953,6 +954,8 @@ const dw_files_fab = async(req = request, res = response) => {
                 }
             });
 
+            console.log(parent_id);
+
             return res.status(200).json({
                 message,
                 data: {
@@ -1204,6 +1207,7 @@ const dw_files_prov = async(req = request, res = response) => {
                 parent_id = data.attributes.parent_id
             }
         });
+        console.log(parent_id);
         //================================
         return res.status(200).json({
             message: 'Consulta exitosa.',
@@ -1351,14 +1355,69 @@ routerZoho.put('/deals_update_declined/', [fn_validateJWTProv], crm_deals_update
 const produce_ok = async (req = request, res = response) => {
 
     try {
-
+        const nombreTemp = uuidv4();
         const reqBody = req.body;
         const { email, tokenZoho, permiso } = req.email;
-        console.log( req.files );
 
-        const crm_contact = urls.find(e => e.name === 'crm_requests');
-        const consumir_update = axios.create({ baseURL: crm_contact.url, headers: { 'Authorization': `Zoho-oauthtoken ${tokenZoho}` } });
-        jsonResult = await consumir_update.put(`/${reqBody.id}`, {
+        const crm_contact = urls.find(e => e.name === 'dw_files');
+        const consumir_search = axios.create({ baseURL: crm_contact.url, headers: { 'Authorization': `Zoho-oauthtoken ${tokenZoho}` } });
+        jsonResult = await consumir_search.get(`bcnqa68f6b83f98cd46ab8e7f5d891d48748c/files`);
+
+        let id_driver_contact = ''
+        jsonResult.data.data.map((data) => {
+            if (data.attributes.name === reqBody.id_contact) {
+                id_driver_contact = data.id
+            }
+        });
+
+        jsonResultFilesInterest = await consumir_search.get(`${id_driver_contact}/files`);
+        let id_interest = ''
+        jsonResultFilesInterest.data.data.map((data) => {
+            if (data.attributes.name === reqBody.id_interest) {
+                id_interest = data.id
+            }
+        });
+
+        if( req.files !== null ){
+            if( Array.isArray( req.files.files )){
+                console.log( 'Lista' );
+            }else{
+                const doc = path.join(__dirname, `../uploads/${nombreTemp}`);
+                if (!fs.existsSync(doc)) {
+                    fs.mkdirSync(doc);
+                }
+                const uploadPath = path.join( __dirname, '../uploads/', nombreTemp, '/', req.files.files.name );
+                await new Promise( (resolve, reject) => {
+                    req.files.files.mv(uploadPath, (err) => {
+                        if (err) {
+                            reject(err);
+                        }
+                        resolve( 'ok' );
+                    });
+                });
+                let data = new FormData();
+                data.append('parent_id', id_interest);
+                data.append('content', fs.createReadStream(uploadPath));
+                data.append('override-name-exist', 'false');
+                let config = {
+                method: 'post',
+                maxBodyLength: Infinity,
+                url: 'https://www.zohoapis.com/workdrive/api/v1/upload',
+                headers: { 
+                    'Authorization': `Zoho-oauthtoken ${tokenZoho}`
+                },
+                data : data
+                };
+                await axios.request(config);
+                fs.rmSync(path.join( __dirname, '../uploads/', nombreTemp ), { recursive: true, force: true });
+            }
+
+        }
+
+
+        const crm_contact00 = urls.find(e => e.name === 'crm_requests');
+        const consumir_update00 = axios.create({ baseURL: crm_contact00.url, headers: { 'Authorization': `Zoho-oauthtoken ${tokenZoho}` } });
+        jsonResult00 = await consumir_update00.put(`/${reqBody.id}`, {
             "data": [{
                 "Supplier_Files": reqBody.stringFilesUpload,
                 "Upper_aligners": reqBody.upperAlignersInput,
@@ -1368,13 +1427,15 @@ const produce_ok = async (req = request, res = response) => {
             }]
         });
 
-        if (jsonResult.status === 200) {
+        if (jsonResult00.status === 200) {
+
             return res.status(200).json({
                 message: 'Consulta exitosa.',
                 permiso,
                 email,
-                data: jsonResult.data.data
+                data: {}
             });
+
         } else {
 
             return res.status(400).json({
@@ -1383,10 +1444,28 @@ const produce_ok = async (req = request, res = response) => {
                 email: '',
                 data: {}
             });
+
         }
 
-        
-        // const { success, token, message } = await zoho_refresh_token_crm();
+    } catch (e) {
+
+        // console.log( 'error' )
+        // console.log( e )
+
+        return res.status(400).json({
+            message: `Api ${e}`,
+            data: {}
+        });
+
+    }
+
+};
+routerZoho.post('/produce_ok', [fn_validateJWTProv], produce_ok);
+
+module.exports = routerZoho;
+
+
+// const { success, token, message } = await zoho_refresh_token_crm();
 
         // if (success) {
 
@@ -1422,17 +1501,3 @@ const produce_ok = async (req = request, res = response) => {
         //         data: {}
         //     });
         // }
-
-    } catch (e) {
-
-        return res.status(500).json({
-            message: `Api ${e}`,
-            data: {}
-        });
-
-    }
-
-};
-routerZoho.post('/produce_ok', [fn_validateJWTProv], produce_ok);
-
-module.exports = routerZoho;
